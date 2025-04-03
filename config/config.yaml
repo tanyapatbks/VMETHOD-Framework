@@ -142,6 +142,73 @@ feature_selection:
   fusion:
     min_votes: 2  # Minimum number of methods that must select a feature
 
+# Model Development Settings
+model_development:
+  lstm:
+    enabled: true
+    units: 64
+    dropout: 0.2
+    learning_rate: 0.001
+    epochs: 100
+    batch_size: 32
+    patience: 20
+  xgboost:
+    enabled: true
+    n_estimators: 100
+    learning_rate: 0.1
+    max_depth: 5
+    subsample: 0.8
+    early_stopping_rounds: 20
+  gru:
+    enabled: true
+    units: 64
+    dropout: 0.2
+    learning_rate: 0.001
+    epochs: 100
+    batch_size: 32
+    patience: 20
+  tft:
+    enabled: true
+    hidden_units: 64
+    attention_heads: 4
+    dropout: 0.2
+    learning_rate: 0.001
+    epochs: 100
+    batch_size: 32
+    patience: 20
+
+# Quantile Regression Settings
+quantile_regression:
+  enabled: true
+  quantiles: [0.1, 0.25, 0.5, 0.75, 0.9]
+  neural_network:
+    enabled: true
+    epochs: 100
+    batch_size: 32
+    patience: 20
+  xgboost:
+    enabled: true
+    n_estimators: 100
+    learning_rate: 0.1
+    early_stopping_rounds: 20
+
+# Ensemble Framework Settings
+ensemble:
+  enabled: true
+  methods:
+    weighted_average:
+      enabled: true
+    stacking:
+      enabled: true
+      meta_model: "ridge"  # Options: linear, ridge, lasso, rf, gbm
+      cv_folds: 5
+    dynamic_weighting:
+      enabled: true
+      window_size: 20
+      error_metric: "rmse"  # Options: rmse, mae, mape
+    regime_specific:
+      enabled: true
+
 # Visualization Settings
 visualization:
   fig_width: 12
