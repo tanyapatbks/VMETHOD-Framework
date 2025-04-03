@@ -1,0 +1,151 @@
+# VMETHOD Framework Configuration
+
+# Paths
+paths:
+  raw_data: "data/raw/"
+  processed_data: "data/processed/"
+  training_data: "data/training/"
+  results: "results/"
+  figures: "results/figures/"
+  reports: "results/reports/"
+
+# Data Acquisition Settings
+data_acquisition:
+  expected_frequency: "1D"  # Daily data
+  interpolate_missing: true
+  currency_pairs:
+    - "EURUSD"
+    - "GBPUSD"
+    - "USDJPY"
+  validation:
+    check_missing_values: true
+    check_timestamp_consistency: true
+    check_ohlc_integrity: true
+
+# Preprocessing Settings
+preprocessing:
+  target_column: "Close"
+  fractional_differentiation:
+    enabled: true
+    d_range:
+      start: 0.1
+      end: 1.0
+      step: 0.1
+    threshold: 1.0e-5
+  market_regime:
+    enabled: true
+    window: 20  # Days for moving average
+    slope_threshold: 0.5  # Percent change threshold for trend detection
+  wavelet_transform:
+    enabled: true
+    wavelet: "db8"  # Daubechies wavelet
+    level: 3  # Decomposition level
+
+# Training Strategy Settings
+training_strategy:
+  horizon: 1  # Days ahead to predict
+  lookback_window: 20  # Number of days to use as history
+  train_test_splits:
+    - train_years: ["2020", "2021"]
+      test_period: "2022-01/2022-03"
+    - train_years: ["2020", "2021", "2022"]
+      test_period: "2023-01/2023-03"
+    - train_years: ["2020", "2021", "2022", "2023"]
+      test_period: "2024-01/2024-03"
+    - train_years: ["2020", "2021", "2022", "2023", "2024"]
+      test_period: "2025-01/2025-03"
+  approaches:
+    single_pair:
+      enabled: true
+    bagging:
+      enabled: true
+
+# Feature Engineering Settings
+feature_engineering:
+  trend_indicators:
+    moving_averages:
+      enabled: true
+      windows: [5, 10, 20, 50, 200]
+      use_sma: true
+      use_ema: true
+    macd:
+      enabled: true
+      fast_period: 12
+      slow_period: 26
+      signal_period: 9
+    dmi:
+      enabled: true
+      period: 14
+  momentum_indicators:
+    rsi:
+      enabled: true
+      periods: [7, 14, 21]
+    stochastic:
+      enabled: true
+      k_period: 14
+      d_period: 3
+      slowing: 3
+    roc:
+      enabled: true
+      periods: [5, 10, 20, 60]
+    cci:
+      enabled: true
+      periods: [20]
+  volatility_indicators:
+    bollinger_bands:
+      enabled: true
+      period: 20
+      std_dev: 2.0
+    atr:
+      enabled: true
+      periods: [14]
+    keltner_channels:
+      enabled: true
+      ema_period: 20
+      atr_period: 10
+      multiplier: 2.0
+
+# Pattern Recognition Settings
+pattern_recognition:
+  candlestick_patterns:
+    enabled: true
+    doji_threshold: 0.05
+    hammer_body_threshold: 0.3
+    hammer_shadow_threshold: 0.7
+  reversal_patterns:
+    enabled: true
+    max_pattern_width: 60
+    peak_prominence: 0.01
+    peak_width: 5
+  breakout_detection:
+    enabled: true
+    lookback: 20
+    volatility_threshold: 2.0
+    price_threshold: 0.02
+    volume_threshold: 2.0
+
+# Feature Selection Settings
+feature_selection:
+  random_forest:
+    enabled: true
+    threshold: 0.01
+    n_estimators: 100
+  boruta:
+    enabled: true
+    max_iter: 100
+  shap:
+    enabled: true
+    top_n: 30
+  autoencoder:
+    enabled: true
+    threshold: 0.1
+  fusion:
+    min_votes: 2  # Minimum number of methods that must select a feature
+
+# Visualization Settings
+visualization:
+  fig_width: 12
+  fig_height: 8
+  style: "seaborn-v0_8-whitegrid"
+  dpi: 300
+  date_format: "%Y-%m"
