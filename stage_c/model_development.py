@@ -407,17 +407,12 @@ class LSTMModel(BaseModel):
         Args:
             input_shape: Shape of input features (samples, features)
         """
-        # Reshape input shape for LSTM [samples, timesteps, features]
-        # For non-sequence inputs, we use timestep of 1
-        lstm_input_shape = (1, input_shape[1])
         
         # Create sequential model
         self.model = Sequential([
-            # Reshape input to 3D
-            tf.keras.layers.Reshape(lstm_input_shape, input_shape=(input_shape[1],)),
             
             # LSTM layers
-            LSTM(self.units, return_sequences=True),
+            LSTM(self.units, return_sequences=True, input_shape=(1, input_shape[1])),
             Dropout(self.dropout),
             LSTM(self.units // 2),
             Dropout(self.dropout),
@@ -640,7 +635,19 @@ class XGBoostModel(BaseModel):
         self.feature_importance = self.model.get_score(importance_type='gain')
         
         # Create a simplified training history dictionary
-        evals_result = self.model.eval_result
+        # Store evaluation results manually
+        evals_result = {}  # Create empty dict to store results
+        self.model = xgb.train(
+            params,
+            dtrain,
+            num_boost_round=self.n_estimators,
+            evals=eval_list,
+            early_stopping_rounds=early_stopping_rounds,
+            verbose_eval=verbose,
+            evals_result=evals_result  # Pass as parameter to capture results
+        )
+
+        # Now use the evals_result dict instead of model.eval_result
         self.training_history = {
             'loss': evals_result['train']['rmse'],
             'val_loss': evals_result['validation']['rmse']
@@ -748,13 +755,11 @@ class GRUModel(BaseModel):
         # For non-sequence inputs, we use timestep of 1
         gru_input_shape = (1, input_shape[1])
         
-        # Create sequential model
+        # Remove the reshape layer
         self.model = Sequential([
-            # Reshape input to 3D
-            tf.keras.layers.Reshape(gru_input_shape, input_shape=(input_shape[1],)),
-            
-            # Bidirectional GRU layers for better context capture
-            tf.keras.layers.Bidirectional(GRU(self.units, return_sequences=True)),
+            # Use input_shape=(1, features) directly for GRU
+            tf.keras.layers.Bidirectional(GRU(self.units, return_sequences=True, 
+                                            input_shape=(1, input_shape[1]))),
             Dropout(self.dropout),
             tf.keras.layers.Bidirectional(GRU(self.units // 2)),
             Dropout(self.dropout),
@@ -902,37 +907,27 @@ class GRUModel(BaseModel):
 
 
 class TemporalAttention(tf.keras.layers.Layer):
-    """Temporal attention mechanism for TFT model."""
-    
     def __init__(self, units):
-        """
-        Initialize temporal attention layer.
-        
-        Args:
-            units: Dimension of the query and key vectors
-        """
         super().__init__()
         self.units = units
         self.query_layer = Dense(units)
         self.key_layer = Dense(units)
         self.value_layer = Dense(units)
         
-    def call(self, query, key, value):
+    def call(self, inputs):
         """
         Apply attention mechanism.
         
         Args:
-            query: Query tensor
-            key: Key tensor
-            value: Value tensor
+            inputs: Input tensor
             
         Returns:
             Context vector and attention weights
         """
-        # Project inputs to query, key and value space
-        query = self.query_layer(query)
-        key = self.key_layer(key)
-        value = self.value_layer(value)
+        # Project inputs
+        query = self.query_layer(inputs)
+        key = self.key_layer(inputs)
+        value = self.value_layer(inputs)
         
         # Calculate dot product attention
         score = tf.matmul(query, key, transpose_b=True)
@@ -999,7 +994,7 @@ class TFTModel(BaseModel):
         attention_output = []
         for _ in range(self.attention_heads):
             attention = TemporalAttention(self.hidden_units)
-            attn_out, _ = attention(x, x, x)
+            attn_out, _ = attention(x)
             attention_output.append(attn_out)
             
         # Combine attention heads

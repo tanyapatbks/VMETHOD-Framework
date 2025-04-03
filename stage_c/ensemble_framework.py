@@ -336,7 +336,7 @@ class EnsembleFramework:
         return ensemble_pred
     
     def train_regime_specific(self, X: pd.DataFrame, y: pd.DataFrame, 
-                            regime_col: str, regimes: List[Any]) -> None:
+                        regime_col: str, regimes: List[Any]) -> None:
         """
         Train regime-specific models for different market conditions.
         
@@ -374,24 +374,36 @@ class EnsembleFramework:
                 continue
                 
             # Extract data for this regime
-            X_regime = X[regime_indices].copy().drop(columns=[regime_col])
+            X_regime = X[regime_indices].copy()
             y_regime = y_array[regime_indices]
+            
+            # Important: Drop the regime column before prediction
+            if regime_col in X_regime.columns:
+                X_regime = X_regime.drop(columns=[regime_col])
             
             # Calculate performance for each model
             performance = {}
             for name, model in self.base_models.items():
                 # Generate predictions
-                pred = model.predict(X_regime)
-                
-                # Calculate error
-                mse = mean_squared_error(y_regime, pred)
-                
-                # Store inverted error (lower error = higher weight)
-                performance[name] = 1.0 / (mse + 1e-10)
-                
+                try:
+                    pred = model.predict(X_regime)
+                    
+                    # Calculate error
+                    mse = mean_squared_error(y_regime, pred)
+                    
+                    # Store inverted error (lower error = higher weight)
+                    performance[name] = 1.0 / (mse + 1e-10)
+                except Exception as e:
+                    logger.warning(f"Error in prediction for model {name} on regime {regime}: {str(e)}")
+                    performance[name] = 1e-10  # Assign very low performance
+                    
             # Normalize weights
             weight_sum = sum(performance.values())
-            regime_weights[regime] = {name: perf / weight_sum for name, perf in performance.items()}
+            if weight_sum > 0:
+                regime_weights[regime] = {name: perf / weight_sum for name, perf in performance.items()}
+            else:
+                # Equal weights if all predictions failed
+                regime_weights[regime] = {name: 1.0 / len(self.base_models) for name in self.base_models.keys()}
             
         # Store regime weights
         self.ensemble_weights = regime_weights
@@ -417,11 +429,17 @@ class EnsembleFramework:
             raise ValueError(f"Regime column '{regime_col}' not found in features")
             
         # Generate predictions from each model
+        # Create a copy without the regime column for prediction
+        X_pred = X.drop(columns=[regime_col])
+        
         base_predictions = {}
         for name, model in self.base_models.items():
-            # Use a version of X without the regime column for prediction
-            X_pred = X.drop(columns=[regime_col])
-            base_predictions[name] = model.predict(X_pred)
+            try:
+                base_predictions[name] = model.predict(X_pred)
+            except Exception as e:
+                logger.warning(f"Error in prediction for model {name}: {str(e)}")
+                # Create dummy predictions in case of failure
+                base_predictions[name] = np.zeros(len(X))
             
         # Initialize ensemble predictions
         ensemble_pred = np.zeros(len(X))
@@ -429,16 +447,20 @@ class EnsembleFramework:
         # Apply regime-specific weights
         for i, regime in enumerate(X[regime_col]):
             # Get weights for this regime
+            regime_str = str(regime)  # Convert regime to string for dictionary lookup
             if regime in self.ensemble_weights:
                 weights = self.ensemble_weights[regime]
+            elif regime_str in self.ensemble_weights:
+                weights = self.ensemble_weights[regime_str]
             else:
                 # Use equal weights if regime not seen during training
                 weights = {name: 1.0 / len(self.base_models) for name in self.base_models.keys()}
                 
             # Combine predictions for this sample
             for name, pred in base_predictions.items():
-                ensemble_pred[i] += weights[name] * pred[i]
-                
+                if name in weights:
+                    ensemble_pred[i] += weights[name] * pred[i]
+                    
         return ensemble_pred
     
     def save(self, save_path: Optional[str] = None) -> str:

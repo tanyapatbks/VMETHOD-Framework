@@ -1,0 +1,9 @@
+{
+  "is_trained": true,
+  "creation_time": "2025-04-03 15:29:42",
+  "base_models": [
+    "single_EURUSD_LSTM",
+    "single_EURUSD_XGBoost",
+    "single_EURUSD_GRU"
+  ]
+}

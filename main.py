@@ -35,6 +35,7 @@ from stage_b.feature_selection import FeatureSelectionFramework
 from stage_c.model_development import ModelDevelopment, LSTMModel, XGBoostModel, GRUModel, TFTModel
 from stage_c.quantile_regression import QuantileRegressionSystem
 from stage_c.ensemble_framework import EnsembleFramework
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
 # Utilities
 from utils.visualization import (
